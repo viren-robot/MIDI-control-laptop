@@ -238,6 +238,31 @@ select:focus{ outline: 2px solid var(--amber); outline-offset: 1px; }
   text-align: center;
 }
 
+.pedal{
+  width: 58px; height: 34px;
+  background: linear-gradient(180deg, #3a3e45, #1c1e21);
+  border-radius: 8px 8px 4px 4px;
+  box-shadow: 0 3px 4px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.07);
+  position: relative;
+  cursor: pointer;
+  touch-action: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.pedal-plate{
+  width: 42px; height: 20px;
+  border-radius: 5px 5px 3px 3px;
+  background: linear-gradient(180deg, #55585f, #2c2f34);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.1), inset 0 -2px 3px rgba(0,0,0,0.4);
+  transition: transform 0.05s, box-shadow 0.05s;
+}
+.pedal.down .pedal-plate{
+  transform: translateY(3px);
+  background: linear-gradient(180deg, var(--amber), #a35a10);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.15), 0 0 8px rgba(255,157,47,0.5);
+}
+
 /* ---------- keyboard ---------- */
 .keyboard-wrap{
   background: var(--panel-recess);
@@ -384,12 +409,29 @@ select:focus{ outline: 2px solid var(--amber); outline-offset: 1px; }
         </div>
 
         <div class="control-group">
+          <div class="knob" id="reverbKnob" style="--rot:-38deg"></div>
+          <div class="control-label">REVERB · CC91</div>
+          <div class="readout" id="reverbReadout">40</div>
+        </div>
+
+        <div class="control-group">
+          <div class="knob" id="echoKnob" style="--rot:-135deg"></div>
+          <div class="control-label">ECHO · CC94</div>
+          <div class="readout" id="echoReadout">0</div>
+        </div>
+
+        <div class="control-group">
           <div class="octave-box">
             <button class="oct-btn" id="octDown">&minus;</button>
             <div class="oct-display" id="octDisplay">0</div>
             <button class="oct-btn" id="octUp">+</button>
           </div>
           <div class="control-label">OCTAVE SHIFT</div>
+        </div>
+
+        <div class="control-group">
+          <div class="pedal" id="pedal"><div class="pedal-plate"></div></div>
+          <div class="control-label">SUSTAIN · CC64</div>
         </div>
       </div>
 
@@ -401,7 +443,8 @@ select:focus{ outline: 2px solid var(--amber); outline-offset: 1px; }
 
       <div class="hint">
         Play with <b>Z X C V B N M</b> / <b>S D G H J</b> (low octave) and <b>Q W E R T Y U I O P</b> / <b>2 3 5 6 7 9 0</b> (high octave), or click the keys. Drag the wheels and knobs. Plug in a USB-MIDI interface or class-compliant synth and pick it from OUTPUT above.<br>
-        <b>CHANNEL</b> defaults to <b>AUTO (scan)</b> — it broadcasts on all 16 channels so the keyboard responds no matter what it's set to. Press a key <i>on the keyboard itself</i> once and the page will detect and lock onto the real channel automatically. Pick "AUTO (scan)" again any time to re-scan.
+        <b>CHANNEL</b> defaults to <b>AUTO (scan)</b> — it broadcasts on all 16 channels so the keyboard responds no matter what it's set to. Press a key <i>on the keyboard itself</i> once and the page will detect and lock onto the real channel automatically. Pick "AUTO (scan)" again any time to re-scan.<br>
+        Hold <b>Spacebar</b> or press-and-hold the <b>pedal</b> switch for sustain (CC64).
       </div>
     </div>
   </div>
@@ -757,6 +800,42 @@ function setupKnob(el, readoutEl, cc, initialVal){
 
 setupKnob(document.getElementById('volKnob'), document.getElementById('volReadout'), 7, 100);
 setupKnob(document.getElementById('cutoffKnob'), document.getElementById('cutoffReadout'), 74, 127);
+setupKnob(document.getElementById('reverbKnob'), document.getElementById('reverbReadout'), 91, 40);
+setupKnob(document.getElementById('echoKnob'), document.getElementById('echoReadout'), 94, 0);
+
+// ---------- sustain pedal (CC64) ----------
+const pedalEl = document.getElementById('pedal');
+let pedalDown = false;
+
+function pedalPress(){
+  if (pedalDown) return;
+  pedalDown = true;
+  pedalEl.classList.add('down');
+  controlChange(64, 127);
+  logLine('sustain&nbsp; on');
+}
+function pedalRelease(){
+  if (!pedalDown) return;
+  pedalDown = false;
+  pedalEl.classList.remove('down');
+  controlChange(64, 0);
+  logLine('sustain&nbsp; off');
+}
+
+pedalEl.addEventListener('pointerdown', e => { e.preventDefault(); pedalPress(); });
+pedalEl.addEventListener('pointerup', pedalRelease);
+pedalEl.addEventListener('pointerleave', pedalRelease);
+pedalEl.addEventListener('pointercancel', pedalRelease);
+
+document.addEventListener('keydown', e => {
+  if (e.code === 'Space' && !e.repeat){
+    e.preventDefault(); // stop page scroll
+    pedalPress();
+  }
+});
+document.addEventListener('keyup', e => {
+  if (e.code === 'Space') pedalRelease();
+});
 
 })();
 </script>
