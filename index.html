@@ -1,0 +1,765 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MIDI/CTRL</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap');
+
+:root{
+  --panel: #24272c;
+  --panel-raised: #2b2f35;
+  --panel-recess: #17191c;
+  --bevel-hi: #3d4149;
+  --bevel-lo: #0f1012;
+  --text: #e9e6df;
+  --text-muted: #8b8d93;
+  --amber: #ff9d2f;
+  --amber-dim: #6b4a1f;
+  --teal: #3ddc97;
+  --teal-dim: #1f4a3a;
+  --key-white: #e9e6df;
+  --key-white-active: #ff9d2f;
+  --key-black: #17191c;
+  --key-black-active: #ff9d2f;
+}
+
+*{ box-sizing: border-box; }
+
+body{
+  margin: 0;
+  background: #111214;
+  color: var(--text);
+  font-family: 'Oswald', 'Arial Narrow', sans-serif;
+  display: flex;
+  justify-content: center;
+  padding: 24px 12px;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.rack{
+  width: 100%;
+  max-width: 860px;
+}
+
+.panel{
+  background: linear-gradient(180deg, var(--panel-raised), var(--panel) 40%);
+  border-radius: 10px;
+  box-shadow:
+    inset 0 1px 0 var(--bevel-hi),
+    inset 0 -2px 0 var(--bevel-lo),
+    0 20px 40px rgba(0,0,0,0.5);
+  padding: 18px 20px 22px;
+}
+
+/* ---------- header ---------- */
+.header{
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 10px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid var(--bevel-lo);
+  margin-bottom: 16px;
+}
+
+.brand{
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+}
+.brand .mark{
+  font-weight: 600;
+  font-size: 20px;
+  letter-spacing: 1px;
+}
+.brand .tag{
+  font-size: 11px;
+  color: var(--text-muted);
+  letter-spacing: 0.5px;
+}
+
+.header-controls{
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+
+.field{
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.field label{
+  font-size: 10px;
+  color: var(--text-muted);
+  letter-spacing: 0.5px;
+}
+select{
+  background: var(--panel-recess);
+  color: var(--text);
+  border: 1px solid var(--bevel-lo);
+  border-radius: 5px;
+  padding: 6px 8px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px;
+  min-width: 150px;
+  box-shadow: inset 0 1px 3px rgba(0,0,0,0.5);
+}
+select:focus{ outline: 2px solid var(--amber); outline-offset: 1px; }
+
+.status{
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 11px;
+  color: var(--text-muted);
+  letter-spacing: 0.5px;
+}
+.led{
+  width: 9px; height: 9px;
+  border-radius: 50%;
+  background: #4a2020;
+  box-shadow: inset 0 0 2px rgba(0,0,0,0.6);
+  transition: background 0.08s, box-shadow 0.08s;
+}
+.led.on{
+  background: var(--teal);
+  box-shadow: 0 0 8px var(--teal), inset 0 0 2px rgba(0,0,0,0.3);
+}
+.led.flash{
+  background: var(--amber);
+  box-shadow: 0 0 10px var(--amber), inset 0 0 2px rgba(0,0,0,0.3);
+}
+
+/* ---------- controls row ---------- */
+.controls-row{
+  display: flex;
+  align-items: flex-end;
+  gap: 28px;
+  padding: 16px 10px 20px;
+  flex-wrap: wrap;
+}
+
+.control-group{
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+.control-label{
+  font-size: 10px;
+  letter-spacing: 0.5px;
+  color: var(--text-muted);
+}
+
+.vslider-track{
+  width: 26px;
+  height: 96px;
+  background: var(--panel-recess);
+  border-radius: 5px;
+  box-shadow: inset 0 2px 5px rgba(0,0,0,0.6), inset 0 0 0 1px var(--bevel-lo);
+  position: relative;
+  touch-action: none;
+  cursor: grab;
+}
+.vslider-thumb{
+  position: absolute;
+  left: 3px; right: 3px;
+  height: 16px;
+  background: linear-gradient(180deg, #4a4e56, #2a2d32);
+  border-radius: 3px;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.08);
+  bottom: 0;
+}
+.vslider-thumb::after{
+  content: '';
+  position: absolute;
+  left: 4px; right: 4px; top: 50%;
+  height: 2px;
+  background: var(--amber);
+  transform: translateY(-1px);
+  border-radius: 1px;
+}
+
+.knob{
+  width: 52px; height: 52px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 30%, #45494f, #202226 70%);
+  box-shadow: 0 2px 5px rgba(0,0,0,0.6), inset 0 0 0 1px var(--bevel-lo);
+  position: relative;
+  touch-action: none;
+  cursor: grab;
+}
+.knob::after{
+  content: '';
+  position: absolute;
+  top: 5px; left: 50%;
+  width: 3px; height: 14px;
+  background: var(--amber);
+  border-radius: 2px;
+  transform-origin: 50% 21px;
+  transform: translateX(-50%) rotate(var(--rot, -135deg));
+}
+
+.readout{
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  color: var(--text-muted);
+  min-width: 26px;
+  text-align: center;
+}
+
+.octave-box{
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.oct-btn{
+  width: 30px; height: 30px;
+  border-radius: 5px;
+  border: none;
+  background: linear-gradient(180deg, #3a3e45, #24272c);
+  color: var(--text);
+  font-size: 15px;
+  font-weight: 600;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.06);
+  cursor: pointer;
+  user-select: none;
+}
+.oct-btn:active{ transform: translateY(1px); }
+.oct-display{
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 13px;
+  min-width: 34px;
+  text-align: center;
+}
+
+/* ---------- keyboard ---------- */
+.keyboard-wrap{
+  background: var(--panel-recess);
+  border-radius: 7px;
+  box-shadow: inset 0 2px 6px rgba(0,0,0,0.6);
+  padding: 14px 14px 10px;
+  margin-bottom: 16px;
+}
+.keyboard{
+  position: relative;
+  display: flex;
+  height: 130px;
+  user-select: none;
+}
+.wkey{
+  position: relative;
+  flex: 1;
+  background: linear-gradient(180deg, var(--key-white), #cfccc4);
+  border: 1px solid #17191c;
+  border-radius: 0 0 4px 4px;
+  margin-right: 1px;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  padding-bottom: 8px;
+  transition: background 0.04s;
+}
+.wkey:last-child{ margin-right: 0; }
+.wkey.active{ background: linear-gradient(180deg, var(--key-white-active), #c97620); }
+.wkey .cap{
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  color: #55524a;
+  pointer-events: none;
+}
+.bkey{
+  position: absolute;
+  top: 0;
+  width: 5.6%;
+  height: 62%;
+  background: linear-gradient(180deg, #2c2f34, var(--key-black));
+  border-radius: 0 0 3px 3px;
+  z-index: 2;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  padding-bottom: 6px;
+  box-shadow: 0 2px 3px rgba(0,0,0,0.5);
+}
+.bkey.active{ background: linear-gradient(180deg, var(--key-black-active), #a35a10); }
+.bkey .cap{
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 9px;
+  color: #b7b4ac;
+  pointer-events: none;
+}
+
+/* ---------- monitor ---------- */
+.monitor{
+  background: var(--panel-recess);
+  border-radius: 6px;
+  box-shadow: inset 0 2px 6px rgba(0,0,0,0.6);
+  padding: 10px 12px;
+  height: 92px;
+  overflow-y: auto;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  color: var(--teal);
+  line-height: 1.6;
+}
+.monitor .empty{ color: var(--text-muted); }
+.monitor .line span{ color: var(--text-muted); margin-right: 6px; }
+
+.hint{
+  margin-top: 10px;
+  font-size: 11px;
+  color: var(--text-muted);
+  line-height: 1.5;
+}
+.hint b{ color: var(--text); font-weight: 500; }
+
+.unsupported{
+  padding: 40px 20px;
+  text-align: center;
+  color: var(--text-muted);
+  font-size: 13px;
+  line-height: 1.6;
+}
+.unsupported b{ color: var(--amber); }
+</style>
+</head>
+<body>
+
+<div class="rack">
+  <div class="panel">
+    <div class="header">
+      <div class="brand">
+        <span class="mark">MIDI/CTRL</span>
+        <span class="tag">USB OUTPUT</span>
+      </div>
+      <div class="header-controls">
+        <div class="field">
+          <label for="outputSelect">OUTPUT</label>
+          <select id="outputSelect"><option>No devices found</option></select>
+        </div>
+        <div class="field">
+          <label for="channelSelect">CHANNEL</label>
+          <select id="channelSelect"></select>
+        </div>
+        <div class="status">
+          <div class="led" id="statusLed"></div>
+          <span id="statusText">NOT CONNECTED</span>
+        </div>
+      </div>
+    </div>
+
+    <div id="app">
+      <div class="controls-row">
+        <div class="control-group">
+          <div class="vslider-track" id="pitchTrack">
+            <div class="vslider-thumb" id="pitchThumb" style="bottom:44%"></div>
+          </div>
+          <div class="control-label">PITCH</div>
+        </div>
+
+        <div class="control-group">
+          <div class="vslider-track" id="modTrack">
+            <div class="vslider-thumb" id="modThumb" style="bottom:0%"></div>
+          </div>
+          <div class="control-label">MOD · CC1</div>
+          <div class="readout" id="modReadout">0</div>
+        </div>
+
+        <div class="control-group">
+          <div class="knob" id="volKnob" style="--rot:-13deg"></div>
+          <div class="control-label">VOLUME · CC7</div>
+          <div class="readout" id="volReadout">100</div>
+        </div>
+
+        <div class="control-group">
+          <div class="knob" id="cutoffKnob" style="--rot:135deg"></div>
+          <div class="control-label">CUTOFF · CC74</div>
+          <div class="readout" id="cutoffReadout">127</div>
+        </div>
+
+        <div class="control-group">
+          <div class="octave-box">
+            <button class="oct-btn" id="octDown">&minus;</button>
+            <div class="oct-display" id="octDisplay">0</div>
+            <button class="oct-btn" id="octUp">+</button>
+          </div>
+          <div class="control-label">OCTAVE SHIFT</div>
+        </div>
+      </div>
+
+      <div class="keyboard-wrap">
+        <div class="keyboard" id="keyboard"></div>
+      </div>
+
+      <div class="monitor" id="monitor"><div class="empty">// waiting for MIDI activity</div></div>
+
+      <div class="hint">
+        Play with <b>Z X C V B N M</b> / <b>S D G H J</b> (low octave) and <b>Q W E R T Y U I O P</b> / <b>2 3 5 6 7 9 0</b> (high octave), or click the keys. Drag the wheels and knobs. Plug in a USB-MIDI interface or class-compliant synth and pick it from OUTPUT above.<br>
+        <b>CHANNEL</b> defaults to <b>AUTO (scan)</b> — it broadcasts on all 16 channels so the keyboard responds no matter what it's set to. Press a key <i>on the keyboard itself</i> once and the page will detect and lock onto the real channel automatically. Pick "AUTO (scan)" again any time to re-scan.
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+(function(){
+
+// ---------- feature check ----------
+if (!navigator.requestMIDIAccess){
+  document.getElementById('app').innerHTML =
+    '<div class="unsupported">Your browser doesn\'t support the <b>Web MIDI API</b>.<br>Open this page in Chrome, Edge, or Brave to use it.</div>';
+  document.getElementById('outputSelect').innerHTML = '<option>Unsupported browser</option>';
+  return;
+}
+
+let midiAccess = null;
+let currentOutput = null;
+let channel = 'auto'; // 'auto' (scanning/broadcasting) or 0-15 once locked
+
+const statusLed = document.getElementById('statusLed');
+const statusText = document.getElementById('statusText');
+const outputSelect = document.getElementById('outputSelect');
+const channelSelect = document.getElementById('channelSelect');
+const monitor = document.getElementById('monitor');
+
+// channel dropdown: AUTO (scan) + Ch 1-16
+const autoOpt = document.createElement('option');
+autoOpt.value = 'auto';
+autoOpt.textContent = 'AUTO (scan)';
+channelSelect.appendChild(autoOpt);
+for (let i=1;i<=16;i++){
+  const opt = document.createElement('option');
+  opt.value = i-1; opt.textContent = 'Ch ' + i;
+  channelSelect.appendChild(opt);
+}
+channelSelect.value = 'auto';
+channelSelect.addEventListener('change', e => {
+  const v = e.target.value;
+  channel = (v === 'auto') ? 'auto' : parseInt(v,10);
+  logLine(channel === 'auto'
+    ? '» channel scan re-enabled — broadcasting on all channels until one is detected'
+    : '» channel manually set to ' + (channel+1));
+});
+
+function flashLed(){
+  statusLed.classList.add('flash');
+  setTimeout(()=>statusLed.classList.remove('flash'), 90);
+}
+
+function updateStatus(){
+  if (currentOutput){
+    statusLed.classList.add('on');
+    statusText.textContent = 'LIVE — ' + currentOutput.name;
+  } else {
+    statusLed.classList.remove('on');
+    statusText.textContent = 'NO OUTPUT SELECTED';
+  }
+}
+
+function refreshOutputs(){
+  const outputs = Array.from(midiAccess.outputs.values());
+  outputSelect.innerHTML = '';
+  if (outputs.length === 0){
+    outputSelect.innerHTML = '<option value="">No devices found</option>';
+    currentOutput = null;
+  } else {
+    outputs.forEach((o, i) => {
+      const opt = document.createElement('option');
+      opt.value = o.id;
+      opt.textContent = o.name;
+      outputSelect.appendChild(opt);
+    });
+    currentOutput = outputs[0];
+    outputSelect.value = currentOutput.id;
+  }
+  updateStatus();
+}
+
+outputSelect.addEventListener('change', e => {
+  const outputs = Array.from(midiAccess.outputs.values());
+  currentOutput = outputs.find(o => o.id === e.target.value) || null;
+  updateStatus();
+});
+
+function refreshInputs(){
+  Array.from(midiAccess.inputs.values()).forEach(input => {
+    input.onmidimessage = e => {
+      const status = e.data[0];
+      const cmd = status & 0xF0;
+      const ch = status & 0x0F;
+      // only channel voice messages (note on/off, CC, pitch bend, etc.) carry a channel
+      if (cmd >= 0x80 && cmd <= 0xE0 && channel === 'auto'){
+        channel = ch;
+        channelSelect.value = String(ch);
+        logLine('» channel detected: ' + (ch+1) + ' — locked. Play a key on the ' + (currentOutput ? currentOutput.name : 'keyboard') + ' to confirm.');
+      }
+    };
+  });
+}
+
+navigator.requestMIDIAccess({ sysex:false }).then(access => {
+  midiAccess = access;
+  refreshOutputs();
+  refreshInputs();
+  midiAccess.onstatechange = () => { refreshOutputs(); refreshInputs(); };
+}).catch(() => {
+  statusText.textContent = 'MIDI ACCESS DENIED';
+});
+
+function logLine(text){
+  const empty = monitor.querySelector('.empty');
+  if (empty) empty.remove();
+  const line = document.createElement('div');
+  line.className = 'line';
+  const t = new Date();
+  const ts = String(t.getMinutes()).padStart(2,'0')+':'+String(t.getSeconds()).padStart(2,'0');
+  line.innerHTML = '<span>'+ts+'</span>' + text;
+  monitor.appendChild(line);
+  monitor.scrollTop = monitor.scrollHeight;
+  while (monitor.children.length > 40) monitor.removeChild(monitor.firstChild);
+}
+
+function rawSend(bytes){
+  if (currentOutput){
+    try { currentOutput.send(bytes); } catch(e) {}
+  }
+}
+
+// sends one logical message either on the locked channel, or broadcast
+// across all 16 channels while still scanning ('auto')
+function send(statusNibble, data1, data2){
+  flashLed();
+  if (channel === 'auto'){
+    for (let ch=0; ch<16; ch++){
+      rawSend(data2 === undefined ? [statusNibble | ch, data1] : [statusNibble | ch, data1, data2]);
+    }
+  } else {
+    rawSend(data2 === undefined ? [statusNibble | channel, data1] : [statusNibble | channel, data1, data2]);
+  }
+}
+
+function noteOn(note, velocity){
+  send(0x90, note, velocity);
+  logLine('note on&nbsp; ' + note + '&nbsp; vel ' + velocity + (channel==='auto' ? '&nbsp; (scanning)' : ''));
+}
+function noteOff(note){
+  send(0x80, note, 0);
+  logLine('note off ' + note);
+}
+function controlChange(cc, value){
+  send(0xB0, cc, value);
+}
+function pitchBend(value14){ // 0-16383, 8192 = center
+  const lsb = value14 & 0x7F;
+  const msb = (value14 >> 7) & 0x7F;
+  send(0xE0, lsb, msb);
+}
+
+// ---------- keyboard layout ----------
+// white key order across the visible keyboard, with matching key-map + octave offsets baked in
+const WHITE_KEYS = [
+  {k:'z', off:0},{k:'x', off:2},{k:'c', off:4},{k:'v', off:5},{k:'b', off:7},{k:'n', off:9},{k:'m', off:11},
+  {k:'q', off:12},{k:'w', off:14},{k:'e', off:16},{k:'r', off:17},{k:'t', off:19},{k:'y', off:21},{k:'u', off:23},
+  {k:'i', off:24},{k:'o', off:26},{k:'p', off:28}
+];
+// black keys positioned by index-of-preceding-white-key (0-based) + offset semitone
+const BLACK_KEYS = [
+  {k:'s', afterIndex:0, off:1},{k:'d', afterIndex:1, off:3},
+  {k:'g', afterIndex:3, off:6},{k:'h', afterIndex:4, off:8},{k:'j', afterIndex:5, off:10},
+  {k:'2', afterIndex:7, off:13},{k:'3', afterIndex:8, off:15},
+  {k:'5', afterIndex:10, off:18},{k:'6', afterIndex:11, off:20},{k:'7', afterIndex:12, off:22},
+  {k:'9', afterIndex:14, off:25},{k:'0', afterIndex:15, off:27}
+];
+const BASE_NOTE = 48; // C3
+
+let octaveShift = 0;
+const octDisplay = document.getElementById('octDisplay');
+document.getElementById('octUp').addEventListener('click', () => {
+  if (octaveShift < 2) octaveShift++;
+  octDisplay.textContent = octaveShift;
+});
+document.getElementById('octDown').addEventListener('click', () => {
+  if (octaveShift > -2) octaveShift--;
+  octDisplay.textContent = octaveShift;
+});
+
+const keyboardEl = document.getElementById('keyboard');
+const keyToEl = {};       // computer key -> DOM element
+const keyToNoteFn = {};   // computer key -> function returning current note number
+const activeComputerKeys = {}; // computer key -> currently sounding note
+
+WHITE_KEYS.forEach((wk, idx) => {
+  const el = document.createElement('div');
+  el.className = 'wkey';
+  el.innerHTML = '<span class="cap">'+wk.k.toUpperCase()+'</span>';
+  keyboardEl.appendChild(el);
+  keyToEl[wk.k] = el;
+  keyToNoteFn[wk.k] = () => BASE_NOTE + wk.off + (octaveShift*12);
+  attachPointer(el, wk.k);
+});
+
+// place black keys absolutely based on white key positions
+requestAnimationFrame(() => {
+  const whiteWidth = 100 / WHITE_KEYS.length;
+  BLACK_KEYS.forEach(bk => {
+    const el = document.createElement('div');
+    el.className = 'bkey';
+    el.innerHTML = '<span class="cap">'+bk.k.toUpperCase()+'</span>';
+    const leftPct = (bk.afterIndex+1) * whiteWidth - (whiteWidth*0.28);
+    el.style.left = leftPct + '%';
+    keyboardEl.appendChild(el);
+    keyToEl[bk.k] = el;
+    keyToNoteFn[bk.k] = () => BASE_NOTE + bk.off + (octaveShift*12);
+    attachPointer(el, bk.k);
+  });
+});
+
+function attachPointer(el, key){
+  el.addEventListener('pointerdown', e => {
+    e.preventDefault();
+    const rect = el.getBoundingClientRect();
+    const relY = (e.clientY - rect.top) / rect.height; // 0 top .. 1 bottom
+    const velocity = Math.max(30, Math.min(127, Math.round(30 + relY*97)));
+    triggerKey(key, velocity);
+  });
+  el.addEventListener('pointerup', () => releaseKey(key));
+  el.addEventListener('pointerleave', () => releaseKey(key));
+}
+
+function triggerKey(key, velocity){
+  if (activeComputerKeys[key] !== undefined) return;
+  const note = keyToNoteFn[key]();
+  activeComputerKeys[key] = note;
+  if (keyToEl[key]) keyToEl[key].classList.add('active');
+  noteOn(note, velocity);
+}
+function releaseKey(key){
+  const note = activeComputerKeys[key];
+  if (note === undefined) return;
+  delete activeComputerKeys[key];
+  if (keyToEl[key]) keyToEl[key].classList.remove('active');
+  noteOff(note);
+}
+
+document.addEventListener('keydown', e => {
+  if (e.repeat) return;
+  const key = e.key.toLowerCase();
+  if (keyToNoteFn[key] && !activeComputerKeys[key]){
+    triggerKey(key, 100);
+  }
+});
+document.addEventListener('keyup', e => {
+  const key = e.key.toLowerCase();
+  if (activeComputerKeys[key] !== undefined) releaseKey(key);
+});
+
+// ---------- pitch bend wheel (springs back to center) ----------
+function setupVSlider(trackEl, thumbEl, { onChange, springBack, initialPct }){
+  let dragging = false;
+  const trackHeight = () => trackEl.getBoundingClientRect().height;
+
+  function setPct(pct){
+    pct = Math.max(0, Math.min(100, pct));
+    thumbEl.style.bottom = pct + '%';
+    onChange(pct);
+  }
+  setPct(initialPct);
+
+  function pointerToPct(e){
+    const rect = trackEl.getBoundingClientRect();
+    const y = e.clientY - rect.top;
+    return 100 - (y / rect.height) * 100;
+  }
+
+  trackEl.addEventListener('pointerdown', e => {
+    dragging = true;
+    trackEl.setPointerCapture(e.pointerId);
+    setPct(pointerToPct(e));
+  });
+  trackEl.addEventListener('pointermove', e => {
+    if (!dragging) return;
+    setPct(pointerToPct(e));
+  });
+  trackEl.addEventListener('pointerup', e => {
+    dragging = false;
+    if (springBack) setPct(initialPct);
+  });
+  trackEl.addEventListener('pointercancel', () => {
+    dragging = false;
+    if (springBack) setPct(initialPct);
+  });
+}
+
+setupVSlider(
+  document.getElementById('pitchTrack'),
+  document.getElementById('pitchThumb'),
+  {
+    initialPct: 44, // visually centered given thumb height
+    springBack: true,
+    onChange: pct => {
+      const norm = (pct - 44) / 44; // roughly -1..1
+      const clamped = Math.max(-1, Math.min(1, norm));
+      const value14 = Math.round(8192 + clamped*8191);
+      pitchBend(Math.max(0, Math.min(16383, value14)));
+    }
+  }
+);
+
+setupVSlider(
+  document.getElementById('modTrack'),
+  document.getElementById('modThumb'),
+  {
+    initialPct: 0,
+    springBack: false,
+    onChange: pct => {
+      const val = Math.round((pct/100)*127);
+      document.getElementById('modReadout').textContent = val;
+      controlChange(1, val);
+    }
+  }
+);
+
+// ---------- knobs ----------
+function setupKnob(el, readoutEl, cc, initialVal){
+  let dragging = false;
+  let value = initialVal;
+
+  function apply(v){
+    value = Math.max(0, Math.min(127, v));
+    const deg = -135 + (value/127)*270;
+    el.style.setProperty('--rot', deg + 'deg');
+    readoutEl.textContent = value;
+    controlChange(cc, value);
+  }
+  apply(initialVal);
+
+  let startY = 0, startVal = 0;
+  el.addEventListener('pointerdown', e => {
+    dragging = true;
+    startY = e.clientY;
+    startVal = value;
+    el.setPointerCapture(e.pointerId);
+  });
+  el.addEventListener('pointermove', e => {
+    if (!dragging) return;
+    const delta = startY - e.clientY; // drag up = increase
+    apply(startVal + delta*0.8);
+  });
+  el.addEventListener('pointerup', () => dragging = false);
+  el.addEventListener('pointercancel', () => dragging = false);
+}
+
+setupKnob(document.getElementById('volKnob'), document.getElementById('volReadout'), 7, 100);
+setupKnob(document.getElementById('cutoffKnob'), document.getElementById('cutoffReadout'), 74, 127);
+
+})();
+</script>
+
+</body>
+</html>
