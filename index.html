@@ -263,6 +263,27 @@ select:focus{ outline: 2px solid var(--amber); outline-offset: 1px; }
   box-shadow: inset 0 1px 0 rgba(255,255,255,0.15), 0 0 8px rgba(255,157,47,0.5);
 }
 
+.demo-btn{
+  padding: 8px 16px;
+  height: 34px;
+  border-radius: 6px;
+  border: none;
+  background: linear-gradient(180deg, #3a3e45, #24272c);
+  color: var(--text);
+  font-family: 'Oswald', sans-serif;
+  font-size: 11px;
+  letter-spacing: 0.5px;
+  font-weight: 600;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.06);
+  cursor: pointer;
+  white-space: nowrap;
+}
+.demo-btn:active{ transform: translateY(1px); }
+.demo-btn.playing{
+  background: linear-gradient(180deg, var(--amber), #a35a10);
+  color: #1c1d20;
+}
+
 /* ---------- keyboard ---------- */
 .keyboard-wrap{
   background: var(--panel-recess);
@@ -432,6 +453,11 @@ select:focus{ outline: 2px solid var(--amber); outline-offset: 1px; }
         <div class="control-group">
           <div class="pedal" id="pedal"><div class="pedal-plate"></div></div>
           <div class="control-label">SUSTAIN · CC64</div>
+        </div>
+
+        <div class="control-group">
+          <button class="demo-btn" id="demoBtn">&#9658; DEMO</button>
+          <div class="control-label">HEY JUDE · CHORDS</div>
         </div>
       </div>
 
@@ -836,6 +862,88 @@ document.addEventListener('keydown', e => {
 document.addEventListener('keyup', e => {
   if (e.code === 'Space') pedalRelease();
 });
+
+// ---------- demo song ----------
+// "Hey Jude" — chord chart only (letter-name chords, no melody or lyrics
+// reproduced), simplified beginner arrangement in the song's actual key of F.
+// Each step is a chord: {chord: <name, for the monitor log>, notes: [<MIDI note numbers>], dur: <ms>}.
+// To play a different song, replace the entries below the same way.
+const DEMO_SONG = [
+  // verse
+  {chord:'F',  notes:[53,57,60],       dur:800},
+  {chord:'C7', notes:[60,64,67,70],    dur:800},
+  {chord:'F',  notes:[53,57,60],       dur:800},
+  {chord:'Bb', notes:[58,62,65],       dur:800},
+  {chord:'F',  notes:[53,57,60],       dur:800},
+  {chord:'C7', notes:[60,64,67,70],    dur:800},
+  {chord:'F',  notes:[53,57,60],       dur:1200},
+
+  {chord:'Bb', notes:[58,62,65],       dur:800},
+  {chord:'F',  notes:[53,57,60],       dur:800},
+  {chord:'C',  notes:[60,64,67],       dur:800},
+  {chord:'F',  notes:[53,57,60],       dur:800},
+  {chord:'Bb', notes:[58,62,65],       dur:800},
+  {chord:'F',  notes:[53,57,60],       dur:800},
+  {chord:'C7', notes:[60,64,67,70],    dur:800},
+  {chord:'F',  notes:[53,57,60],       dur:1200},
+
+  // outro loop — the classic "na-na-na" I-bVII-IV-I turnaround
+  {chord:'F',  notes:[53,57,60],       dur:600},
+  {chord:'Eb', notes:[63,67,70],       dur:600},
+  {chord:'Bb', notes:[58,62,65],       dur:600},
+  {chord:'F',  notes:[53,57,60],       dur:600}
+];
+
+let demoPlaying = false;
+let demoTimers = [];
+const demoBtn = document.getElementById('demoBtn');
+
+function flashKeyForNote(note, on){
+  for (const k in keyToNoteFn){
+    if (keyToNoteFn[k]() === note){
+      if (keyToEl[k]) keyToEl[k].classList.toggle('active', on);
+      break;
+    }
+  }
+}
+function flashKeysForChord(notes, on){
+  notes.forEach(n => flashKeyForNote(n, on));
+}
+
+function stopDemoSong(){
+  demoTimers.forEach(id => clearTimeout(id));
+  demoTimers = [];
+  demoPlaying = false;
+  demoBtn.innerHTML = '&#9658; DEMO';
+  demoBtn.classList.remove('playing');
+}
+
+function playDemoSong(){
+  if (demoPlaying){ stopDemoSong(); return; }
+  demoPlaying = true;
+  demoBtn.innerHTML = '&#9632; STOP';
+  demoBtn.classList.add('playing');
+  logLine('» playing demo chord chart');
+
+  let t = 0;
+  const gap = 60; // small silence between chords for articulation
+  DEMO_SONG.forEach(step => {
+    const onId = setTimeout(() => {
+      step.notes.forEach(n => noteOn(n, 90));
+      flashKeysForChord(step.notes, true);
+      if (step.chord) logLine('chord&nbsp; ' + step.chord);
+    }, t);
+    const offId = setTimeout(() => {
+      step.notes.forEach(n => noteOff(n));
+      flashKeysForChord(step.notes, false);
+    }, t + Math.max(20, step.dur - gap));
+    demoTimers.push(onId, offId);
+    t += step.dur;
+  });
+  demoTimers.push(setTimeout(stopDemoSong, t + 50));
+}
+
+demoBtn.addEventListener('click', playDemoSong);
 
 })();
 </script>
