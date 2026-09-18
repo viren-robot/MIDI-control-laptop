@@ -457,7 +457,7 @@ select:focus{ outline: 2px solid var(--amber); outline-offset: 1px; }
 
         <div class="control-group">
           <button class="demo-btn" id="demoBtn">&#9658; DEMO</button>
-          <div class="control-label">HEY JUDE · CHORDS</div>
+          <div class="control-label">HEY JUDE · FULL SONG</div>
         </div>
       </div>
 
@@ -864,12 +864,14 @@ document.addEventListener('keyup', e => {
 });
 
 // ---------- demo song ----------
-// "Hey Jude" — chord chart only (letter-name chords, no melody or lyrics
+// "Hey Jude" — full-song chord chart, chords only (no melody or lyrics
 // reproduced), simplified beginner arrangement in the song's actual key of F.
-// Each step is a chord: {chord: <name, for the monitor log>, notes: [<MIDI note numbers>], dur: <ms>}.
-// To play a different song, replace the entries below the same way.
-const DEMO_SONG = [
-  // verse
+// Structure: Verse, Verse, Bridge, Verse, Bridge, Verse, Outro (looped) —
+// matches the real song's section order, compressed to a practical demo length.
+// Each step is a chord: {chord: <name, for the log>, section: <optional header
+// logged once at the start of a section>, notes: [<MIDI note numbers>], dur: <ms>}.
+// To play a different song, replace the array the same way.
+const VERSE = [
   {chord:'F',  notes:[53,57,60],       dur:800},
   {chord:'C7', notes:[60,64,67,70],    dur:800},
   {chord:'F',  notes:[53,57,60],       dur:800},
@@ -877,7 +879,6 @@ const DEMO_SONG = [
   {chord:'F',  notes:[53,57,60],       dur:800},
   {chord:'C7', notes:[60,64,67,70],    dur:800},
   {chord:'F',  notes:[53,57,60],       dur:1200},
-
   {chord:'Bb', notes:[58,62,65],       dur:800},
   {chord:'F',  notes:[53,57,60],       dur:800},
   {chord:'C',  notes:[60,64,67],       dur:800},
@@ -885,13 +886,39 @@ const DEMO_SONG = [
   {chord:'Bb', notes:[58,62,65],       dur:800},
   {chord:'F',  notes:[53,57,60],       dur:800},
   {chord:'C7', notes:[60,64,67,70],    dur:800},
-  {chord:'F',  notes:[53,57,60],       dur:1200},
-
-  // outro loop — the classic "na-na-na" I-bVII-IV-I turnaround
+  {chord:'F',  notes:[53,57,60],       dur:1200}
+];
+const BRIDGE = [
+  {chord:'Bb', notes:[58,62,65],       dur:800},
+  {chord:'F',  notes:[53,57,60],       dur:800},
+  {chord:'C',  notes:[60,64,67],       dur:800},
+  {chord:'F',  notes:[53,57,60],       dur:800},
+  {chord:'Bb', notes:[58,62,65],       dur:800},
+  {chord:'F',  notes:[53,57,60],       dur:800},
+  {chord:'C7', notes:[60,64,67,70],    dur:800},
+  {chord:'F',  notes:[53,57,60],       dur:1200}
+];
+const OUTRO_LOOP = [
   {chord:'F',  notes:[53,57,60],       dur:600},
   {chord:'Eb', notes:[63,67,70],       dur:600},
   {chord:'Bb', notes:[58,62,65],       dur:600},
   {chord:'F',  notes:[53,57,60],       dur:600}
+];
+
+function withSection(arr, label){
+  return arr.map((step, i) => i === 0 ? {...step, section: label} : step);
+}
+
+const DEMO_SONG = [
+  ...withSection(VERSE, 'VERSE 1'),
+  ...withSection(VERSE, 'VERSE 2'),
+  ...withSection(BRIDGE, 'BRIDGE'),
+  ...withSection(VERSE, 'VERSE 3'),
+  ...withSection(BRIDGE, 'BRIDGE'),
+  ...withSection(VERSE, 'VERSE 4'),
+  ...withSection(OUTRO_LOOP, 'OUTRO'),
+  ...OUTRO_LOOP, ...OUTRO_LOOP, ...OUTRO_LOOP,
+  ...OUTRO_LOOP, ...OUTRO_LOOP, ...OUTRO_LOOP, ...OUTRO_LOOP
 ];
 
 let demoPlaying = false;
@@ -923,15 +950,19 @@ function playDemoSong(){
   demoPlaying = true;
   demoBtn.innerHTML = '&#9632; STOP';
   demoBtn.classList.add('playing');
-  logLine('» playing demo chord chart');
+  logLine('» playing full demo chord chart');
 
   let t = 0;
   const gap = 60; // small silence between chords for articulation
   DEMO_SONG.forEach(step => {
+    if (step.section){
+      const secId = setTimeout(() => logLine('—— ' + step.section + ' ——'), t);
+      demoTimers.push(secId);
+    }
     const onId = setTimeout(() => {
       step.notes.forEach(n => noteOn(n, 90));
       flashKeysForChord(step.notes, true);
-      if (step.chord) logLine('chord&nbsp; ' + step.chord);
+      logLine('chord&nbsp; ' + step.chord);
     }, t);
     const offId = setTimeout(() => {
       step.notes.forEach(n => noteOff(n));
